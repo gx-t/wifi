@@ -118,14 +118,13 @@ static void free_socket() {
 	}
 }
 
-static void ctrl_c(int sig) {
+static void ctrl_c_rx(int sig) {
 	fprintf(stderr, "SIGINT...\n");
 	free_socket();
-	close(0);
 }
 
 static int rx_main_loop() {
-	signal(SIGINT, ctrl_c);
+	signal(SIGINT, ctrl_c_rx);
 
 	uint8_t buff[sizeof(rt_80211_headers) + 8 + 1024];
 	int len = 0;
@@ -200,16 +199,20 @@ static int rx_main_loop() {
 static int rx_main() {
 	int res = 0;
 	
-	if( (res = init_socket()) || (res = set_monitor("mon0")) || (res = rx_main_loop()) )
-		return res;
+	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = rx_main_loop()) );
 
 	free_socket(ss);
 	fprintf(stderr, "Exitting...\n");
 	return res;
 }
 
+static void ctrl_c_tx(int sig) {
+	fprintf(stderr, "SIGINT...\n");
+	close(0);
+}
+
 static int tx_main_loop() {
-	signal(SIGINT, ctrl_c);
+	signal(SIGINT, ctrl_c_tx);
 
 
     uint8_t buff[sizeof(rt_80211_headers) + 1024];
@@ -230,8 +233,7 @@ static int tx_main_loop() {
 static int tx_main() {
 	int res = 0;
 	
-	if( (res = init_socket()) || (res = set_monitor("mon0")) || (res = tx_main_loop()) )
-		return res;
+	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = tx_main_loop()) );
 
 	free_socket(ss);
 	fprintf(stderr, "Exitting...\n");
