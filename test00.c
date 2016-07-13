@@ -5,7 +5,6 @@
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <linux/if_packet.h>
 
@@ -26,6 +25,18 @@ Good example for PF_PACKET:
 https://github.com/openwrt/openwrt/tree/master/package/network/utils/iwcap
 
 */
+
+enum {
+	ERR_OK = 0,
+	ERR_ARGC,
+	ERR_ARGV,
+	ERR_SOCKET,
+	ERR_GETIFINDEX,
+	ERR_GETSOCKFLAGS,
+	ERR_SETSOCKFLAGS,
+	ERR_BIND,
+	ERR_SEND,
+};
 
 #define MAX_PACKET			0x400
 
@@ -78,13 +89,13 @@ static int set_monitor(const char* ifname)
 	local.sll_ifindex = if_nametoindex(ifname);
 	if(!local.sll_ifindex) {
 		perror("if_nametoindex");
-		return 4;
+		return ERR_GETIFINDEX;
 	}
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
 	if (ioctl(ss, SIOCGIFFLAGS, &ifr) < 0) {
 		perror("SIOCGIFFLAGS");
-		return 5;
+		return ERR_GETSOCKFLAGS;
 	}
 
 	ifr.ifr_flags &= ~IFF_PROMISC;
@@ -92,25 +103,25 @@ static int set_monitor(const char* ifname)
 
 	if (ioctl(ss, SIOCSIFFLAGS, &ifr)) {
 		perror("SIOCGIFFLAGS");
-		return 6;
+		return ERR_SETSOCKFLAGS;
 	}
 
 	if(bind(ss, (struct sockaddr *)&local, sizeof(local)) == -1)
 	{
 		perror("bind");
-		return 7;
+		return ERR_BIND;
 	}
 
-	return 0;
+	return ERR_OK;
 }
 
 static int init_socket() {
 	ss = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if(ss < 0) {
 		perror("socket");
-		return 3;
+		return ERR_SOCKET;
 	}
-	return 0;
+	return ERR_OK;
 }
 
 static void free_socket() {
@@ -190,16 +201,16 @@ static int rx_main_loop() {
 		len -= (pp - buff);
 
 		//output data to stdout
-		if(len != write(1, pp, len)) break;
+		if(len != write(STDOUT_FILENO, pp, len)) break;
 
 		fprintf(stderr, "===cnt: 0x%x, data len: 0x%X\n", cnt ++, len);
 	}
 	
-	return 0;
+	return ERR_OK;
 }
 
 static int rx_main() {
-	int res = 0;
+	int res = ERR_OK;
 	
 	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = rx_main_loop()) );
 
@@ -222,18 +233,18 @@ static int tx_main_loop() {
 
 	int len = 0;
 
-	while(0 < (len = read(0, buff + sizeof(rt_80211_headers), MAX_PACKET))) {
+	while(0 < (len = read(STDIN_FILENO, buff + sizeof(rt_80211_headers), MAX_PACKET))) {
 
 		len += sizeof(rt_80211_headers);
 		if(len != write(ss, buff, len))
 			break;
 	}
 
-	return 0;
+	return ERR_OK;
 }
 
 static int tx_main() {
-	int res = 0;
+	int res = ERR_OK;
 	
 	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = tx_main_loop()) );
 
@@ -255,7 +266,7 @@ static int show_usage(const char* cmd, int err) {
 int main(int argc, char* argv[]) {
 	if(argc < 2) {
 		fprintf(stderr, "\nArgument is missing\n");
-		return show_usage(argv[0], 1);
+		return show_usage(argv[0], ERR_ARGC);
 	}
 
 	if(!strcmp(argv[1], "rx"))
@@ -265,6 +276,6 @@ int main(int argc, char* argv[]) {
 		return tx_main();
 
 	fprintf(stderr, "\nUnknown subcommand: %s\n", argv[1]);
-	return show_usage(argv[0], 2);
+	return show_usage(argv[0], ERR_ARGV);
 }
 
