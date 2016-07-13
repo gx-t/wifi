@@ -27,6 +27,8 @@ https://github.com/openwrt/openwrt/tree/master/package/network/utils/iwcap
 
 */
 
+#define MAX_PACKET			0x400
+
 //socket
 static int ss = -1;
 
@@ -126,7 +128,7 @@ static void ctrl_c_rx(int sig) {
 static int rx_main_loop() {
 	signal(SIGINT, ctrl_c_rx);
 
-	uint8_t buff[sizeof(rt_80211_headers) + 8 + 1024];
+	uint8_t buff[sizeof(rt_80211_headers) + 8 + MAX_PACKET];
 	int len = 0;
 
 	while(0 < (len = read(ss, buff, sizeof(buff)))) {
@@ -215,12 +217,12 @@ static int tx_main_loop() {
 	signal(SIGINT, ctrl_c_tx);
 
 
-    uint8_t buff[sizeof(rt_80211_headers) + 1024];
+    uint8_t buff[sizeof(rt_80211_headers) + MAX_PACKET];
     memcpy(buff, rt_80211_headers, sizeof(rt_80211_headers));
 
 	int len = 0;
 
-	while(0 < (len = read(0, buff + sizeof(rt_80211_headers), 1024))) {
+	while(0 < (len = read(0, buff + sizeof(rt_80211_headers), MAX_PACKET))) {
 
 		len += sizeof(rt_80211_headers);
 		if(len != write(ss, buff, len))
@@ -241,15 +243,18 @@ static int tx_main() {
 }
 
 static int show_usage(const char* cmd, int err) {
-	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\t%s rx\n", cmd);
-	fprintf(stderr, "\t%s tx\n", cmd);
+	fprintf(stderr, "\nUsage:\n");
+	fprintf(stderr, "-----------\n");
+	fprintf(stderr, "%s rx       receive and write to stdout\n", cmd);
+	fprintf(stderr, "%s tx       read stdin and broadcast\n", cmd);
+	fprintf(stderr, "\nPacket size is %d bytes limited\n", MAX_PACKET);
+	fprintf(stderr, "Logging information is written to stderr\n\n");
 	return err;
 }
 
 int main(int argc, char* argv[]) {
 	if(argc < 2) {
-		fprintf(stderr, "Not enough arguments.\n");
+		fprintf(stderr, "\nArgument is missing\n");
 		return show_usage(argv[0], 1);
 	}
 
@@ -259,7 +264,7 @@ int main(int argc, char* argv[]) {
 	if(!strcmp(argv[1], "tx"))
 		return tx_main();
 
-	fprintf(stderr, "Unknown subcommand: %s\n", argv[1]);
+	fprintf(stderr, "\nUnknown subcommand: %s\n", argv[1]);
 	return show_usage(argv[0], 2);
 }
 
