@@ -155,7 +155,7 @@ static int rx_main_loop() {
 
 		pp += hlen; //jump to 802.11 frame
 
-		//tupe: data, subtype: 1, duration: 0
+		//type: data, subtype: 1, duration: 0
 		if(pp[0] != 0x08 || pp[1] != 0x01 || pp[2] || pp[3]) {
 			continue;
 		}
