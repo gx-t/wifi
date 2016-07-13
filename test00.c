@@ -217,8 +217,8 @@ static int tx_main_loop() {
 	signal(SIGINT, ctrl_c_tx);
 
 
-    uint8_t buff[sizeof(rt_80211_headers) + MAX_PACKET];
-    memcpy(buff, rt_80211_headers, sizeof(rt_80211_headers));
+	uint8_t buff[sizeof(rt_80211_headers) + MAX_PACKET];
+	memcpy(buff, rt_80211_headers, sizeof(rt_80211_headers));
 
 	int len = 0;
 
