@@ -7,6 +7,7 @@
 #include <netinet/if_ether.h>
 #include <net/if.h>
 #include <linux/if_packet.h>
+#include <linux/filter.h>
 
 /*
 Wifi card monitor mode set up:
@@ -24,6 +25,8 @@ https://github.com/lwerdna/wifibroadcast
 Good example for PF_PACKET:
 https://github.com/openwrt/openwrt/tree/master/package/network/utils/iwcap
 
+tcpdump -dd -i mon0 ether src 13:22:33:44:55:66 and ether dst 13:22:33:44:55:66
+
 */
 
 enum {
@@ -35,7 +38,7 @@ enum {
 	ERR_GETSOCKFLAGS,
 	ERR_SETSOCKFLAGS,
 	ERR_BIND,
-	ERR_SEND,
+	ERR_ATTACHFILTER,
 };
 
 #define MAX_PACKET			0x400
@@ -72,11 +75,14 @@ static const unsigned char rt_80211_headers[] = {
 	0x00, 0x00, // duration: 0
 
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // receiver/bssid: BROADCAST!
+
+	//!!!Same addresses must be in filter rule in  Makefile!!!
 	0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // transmitter/source
 	0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // destination
 
 	0x10, 0x86, // frag/sequence
 };
+
 
 static int set_monitor(const char* ifname)
 {
@@ -131,8 +137,28 @@ static void free_socket() {
 	}
 }
 
+static int attach_filter() {
+
+	static struct sock_filter code[] = {
+		//run make filter!
+#include "test00-filter.h"
+	};
+
+	struct sock_fprog bpf = {sizeof(code) / sizeof(code[0]), code};
+	int lock = 1;
+
+	if(setsockopt(ss, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof(bpf)) < 0 ||
+			setsockopt(ss, SOL_SOCKET, SO_LOCK_FILTER, &lock, sizeof(lock)) < 0)
+	{
+		perror("attach filter");
+		return ERR_ATTACHFILTER;
+	}
+
+	return ERR_OK;
+}
+
 static void ctrl_c_rx(int sig) {
-	fprintf(stderr, "SIGINT...\n");
+	fprintf(stderr, "\n");
 	free_socket();
 }
 
@@ -149,61 +175,19 @@ static int rx_main_loop() {
 
 		//radiotap header:
 		//check version and padding check, get and check header length
-		if(len < 36 || pp[0] || pp[1] || len - 24 < (hlen = pp[2] | pp[3] << 8)) {
+		if(len < 40 || pp[0] || pp[1] || len - 24 < (hlen = pp[2] | pp[3] << 8)) {
 			continue;
 		}
 
 		pp += hlen; //jump to 802.11 frame
 
-		//type: data, subtype: 1, duration: 0
-		if(pp[0] != 0x08 || pp[1] != 0x01 || pp[2] || pp[3]) {
-			continue;
-		}
-
-		//jump to MAC addresses
-		pp += 4;
-
-		fprintf(stderr, "===rcv: %d bytes, hlen=%d\n", len, hlen);
-
-		// receiver/bssid
-		fprintf(stderr, "===rcvr:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",
-				pp[0],
-				pp[1],
-				pp[2],
-				pp[3],
-				pp[4],
-				pp[5]);
-
-		pp += 6;
-		//transmitter/source
-		fprintf(stderr, "===trmt:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",
-				pp[0],
-				pp[1],
-				pp[2],
-				pp[3],
-				pp[4],
-				pp[5]);
-
-		pp += 6;
-		//destination
-		fprintf(stderr, "===dest:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x:0x%02x\n",
-				pp[0],
-				pp[1],
-				pp[2],
-				pp[3],
-				pp[4],
-				pp[5]);
-
 		//jump to payload
-		pp += 8;
+		pp += 24;
 
-		static uint32_t cnt = 0;
 		len -= (pp - buff);
 
 		//output data to stdout
 		if(len != write(STDOUT_FILENO, pp, len)) break;
-
-		fprintf(stderr, "===cnt: 0x%x, data len: 0x%X\n", cnt ++, len);
 	}
 	
 	return ERR_OK;
@@ -212,15 +196,15 @@ static int rx_main_loop() {
 static int rx_main() {
 	int res = ERR_OK;
 	
-	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = rx_main_loop()) );
+	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = attach_filter()) || (res = rx_main_loop()) );
 
 	free_socket(ss);
-	fprintf(stderr, "Exitting...\n");
+	fprintf(stderr, ".end\n");
 	return res;
 }
 
 static void ctrl_c_tx(int sig) {
-	fprintf(stderr, "SIGINT...\n");
+	fprintf(stderr, "\n");
 	close(0);
 }
 
@@ -249,7 +233,7 @@ static int tx_main() {
 	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = tx_main_loop()) );
 
 	free_socket(ss);
-	fprintf(stderr, "Exitting...\n");
+	fprintf(stderr, ".end\n");
 	return res;
 }
 
