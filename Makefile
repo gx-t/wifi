@@ -9,6 +9,10 @@ deb:
 filter:
 	(sudo ./gen-filter.sh) > test00-filter.h
 
+monitor:
+	sudo iw phy phy0 interface add mon0 type monitor
+	sudo ifconfig mon0 up
+
 ctags:
 	ctags -R .
 

@@ -144,8 +144,10 @@ static void free_socket() {
 static int attach_filter() {
 
 	static struct sock_filter code[] = {
+
 		//run make filter to generate this file
 #include "test00-filter.h"
+	
 	};
 
 	struct sock_fprog bpf = {sizeof(code) / sizeof(code[0]), code};
