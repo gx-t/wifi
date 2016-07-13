@@ -53,6 +53,7 @@ static int ss = -1;
 
 //radiotap headers + 802.11 frame
 static const unsigned char rt_80211_headers[] = {
+	//!!! CHANGING VALUES HERE NEED CHANGES IN gen-filter.sh !!!
 	
 	//----RADIOTAP HEADER----
 	0x00, 0x00, // version and pad
@@ -76,13 +77,10 @@ static const unsigned char rt_80211_headers[] = {
 	//0x18, 0x00, // 0x18 is b4,b3 is F_FCS (fcs will removed and recalculated), F_FRAG (frame will be fragmented if beyond frag thr
 
 	//----802.11 FRAME----
-	//!!!same as in Makefile filter rule!!!
 	0x08, 0x01, // type: data, subtype: 1
 	0x00, 0x00, // duration: 0
 
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // receiver/bssid: BROADCAST!
-
-	//!!!Same addresses must be in filter rule in  Makefile!!!
 	0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // transmitter/source
 	0x13, 0x22, 0x33, 0x44, 0x55, 0x66, // destination
 
@@ -176,20 +174,16 @@ static int rx_main_loop() {
 
 	while(0 < (len = read(ss, buff, sizeof(buff)))) {
 
+		//packet initial filtering is done in NIC - see gen-filter.sh
 		uint8_t* pp = buff;
-		uint16_t hlen = 0;
-
-		//radiotap header:
-		//check version and padding check, get and check header length
-		if(len < 40 || pp[0] || pp[1] || len - 24 < (hlen = pp[2] | pp[3] << 8)) {
-			continue;
-		}
+		uint16_t hlen = pp[2] | pp[3] << 8;
 
 		pp += hlen; //jump to 802.11 frame
 
 		//jump to payload
 		pp += 24;
 
+		//payload size
 		len -= (pp - buff);
 
 		//output data to stdout
