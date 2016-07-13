@@ -25,8 +25,10 @@ https://github.com/lwerdna/wifibroadcast
 Good example for PF_PACKET:
 https://github.com/openwrt/openwrt/tree/master/package/network/utils/iwcap
 
-tcpdump -dd -i mon0 ether src 13:22:33:44:55:66 and ether dst 13:22:33:44:55:66
-
+Socket filters:
+https://www.kernel.org/doc/Documentation/networking/filter.txt
+to generate filter program run tcpdump -dd ...
+see tcpdump docs
 */
 
 enum {
@@ -42,6 +44,9 @@ enum {
 };
 
 #define MAX_PACKET			0x400
+
+//interface name
+static const char* ifname = "mon0";
 
 //socket
 static int ss = -1;
@@ -71,6 +76,7 @@ static const unsigned char rt_80211_headers[] = {
 	//0x18, 0x00, // 0x18 is b4,b3 is F_FCS (fcs will removed and recalculated), F_FRAG (frame will be fragmented if beyond frag thr
 
 	//----802.11 FRAME----
+	//!!!same as in Makefile filter rule!!!
 	0x08, 0x01, // type: data, subtype: 1
 	0x00, 0x00, // duration: 0
 
@@ -84,7 +90,7 @@ static const unsigned char rt_80211_headers[] = {
 };
 
 
-static int set_monitor(const char* ifname)
+static int set_monitor()
 {
 	struct sockaddr_ll local = {
 		.sll_family   = AF_PACKET,
@@ -140,7 +146,7 @@ static void free_socket() {
 static int attach_filter() {
 
 	static struct sock_filter code[] = {
-		//run make filter!
+		//run make filter to generate this file
 #include "test00-filter.h"
 	};
 
@@ -196,7 +202,10 @@ static int rx_main_loop() {
 static int rx_main() {
 	int res = ERR_OK;
 	
-	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = attach_filter()) || (res = rx_main_loop()) );
+	(void)( (res = init_socket())
+			|| (res = set_monitor())
+			|| (res = attach_filter())
+			|| (res = rx_main_loop()) );
 
 	free_socket(ss);
 	fprintf(stderr, ".end\n");
@@ -230,7 +239,9 @@ static int tx_main_loop() {
 static int tx_main() {
 	int res = ERR_OK;
 	
-	(void)( (res = init_socket()) || (res = set_monitor("mon0")) || (res = tx_main_loop()) );
+	(void)( (res = init_socket())
+			|| (res = set_monitor())
+			|| (res = tx_main_loop()) );
 
 	free_socket(ss);
 	fprintf(stderr, ".end\n");
