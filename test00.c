@@ -176,7 +176,7 @@ static int rx_main_loop() {
 
 	while(0 < (len = read(ss, buff, sizeof(buff)))) {
 
-		//packet initial filtering is done in NIC - see gen-filter.sh
+		//packet filtering is done in kernel - see gen-filter.sh
 		uint8_t* pp = buff;
 		uint16_t hlen = pp[2] | pp[3] << 8;
 
