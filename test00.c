@@ -13,6 +13,9 @@
 Wifi card monitor mode set up:
 https://sandilands.info/sgordon/capturing-wifi-in-monitor-mode-with-iw
 
+Radiotap fields:
+http://www.radiotap.org/defined-fields
+
 Radiotap headers:
 https://www.kernel.org/doc/Documentation/networking/radiotap-headers.txt
 
@@ -29,6 +32,15 @@ Socket filters:
 https://www.kernel.org/doc/Documentation/networking/filter.txt
 to generate filter program run tcpdump -dd ...
 see tcpdump docs
+
+-------------------------------------------------------------------------------
+
+To prepare interface:
+iw phy phy0 interface add mon0 type monitor
+iw dev wlan0 del
+ifconfig mon0 up
+iw phy phy0 set channel 7
+iw phy phy0 set txpower fixed 20
 */
 
 enum {
