@@ -58,7 +58,7 @@ enum {
 #define MAX_PACKET			0x400
 
 //interface name
-static const char* ifname = "mon0";
+static const char* ifname = "wlan0-1";
 
 //socket
 static int ss = -1;
@@ -70,15 +70,9 @@ static const unsigned char rt_80211_headers[] = {
 	//----RADIOTAP HEADER----
 	0x00, 0x00, // version and pad
 
-	0x0b, 0x00, // radiotap header length
+	0x08, 0x00, // radiotap header length
 	
-	0x04, 0x0C, 0x00, 0x00, // bitmap (field presense bits)
-
-	0x04, // rate in 500 kb/s units
-
-	0x14, // power dbm
-
-	0x01, // antenna
+	0x00, 0x00, 0x00, 0x00, // bitmap (field presense bits)
 
 	//0x0c, 0x00, // len (12 bytes)
 	//0x04, 0x80, 0x00, 0x00, // it_present bitmap (0x8004 is 1000 0000 0000 0100 is b15,b2)
