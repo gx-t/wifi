@@ -108,7 +108,7 @@ static int set_monitor()
 	}
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
-	if (ioctl(ss, SIOCGIFFLAGS, &ifr) < 0) {
+	if(ioctl(ss, SIOCGIFFLAGS, &ifr) < 0) {
 		perror("SIOCGIFFLAGS");
 		return ERR_GETSOCKFLAGS;
 	}
@@ -116,13 +116,12 @@ static int set_monitor()
 	ifr.ifr_flags &= ~IFF_PROMISC;
 	ifr.ifr_flags |=  IFF_BROADCAST;
 
-	if (ioctl(ss, SIOCSIFFLAGS, &ifr)) {
+	if(ioctl(ss, SIOCSIFFLAGS, &ifr)) {
 		perror("SIOCGIFFLAGS");
 		return ERR_SETSOCKFLAGS;
 	}
 
-	if(bind(ss, (struct sockaddr *)&local, sizeof(local)) == -1)
-	{
+	if(bind(ss, (struct sockaddr *)&local, sizeof(local)) == -1) {
 		perror("bind");
 		return ERR_BIND;
 	}
@@ -159,8 +158,7 @@ static int attach_filter() {
 	int lock = 1;
 
 	if(setsockopt(ss, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof(bpf)) < 0 ||
-			setsockopt(ss, SOL_SOCKET, SO_LOCK_FILTER, &lock, sizeof(lock)) < 0)
-	{
+			setsockopt(ss, SOL_SOCKET, SO_LOCK_FILTER, &lock, sizeof(lock)) < 0) {
 		perror("attach filter");
 		return ERR_ATTACHFILTER;
 	}
